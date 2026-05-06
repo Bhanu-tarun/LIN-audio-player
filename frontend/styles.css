@@ -1,10 +1,45 @@
+/* ===== Theme System ===== */
 :root {
-  --bg-color: #0f0f13;
-  --glass-bg: rgba(20, 20, 25, 0.6);
+  /* Dark mode (default) */
+  --bg-color: #000000;
+  --bg-color-rgb: 0, 0, 0;
+  --glass-bg: rgba(10, 10, 10, 0.7);
   --glass-border: rgba(255, 255, 255, 0.1);
   --text-primary: #ffffff;
-  --text-secondary: #808080;
+  --text-secondary: #999999;
   --accent-color: #00ff00;
+  --search-overlay-bg: rgba(0, 0, 0, 0.9);
+  --queue-item-bg: rgba(255, 255, 255, 0.05);
+  --queue-item-hover: rgba(255, 255, 255, 0.1);
+  --progress-track: rgba(255, 255, 255, 0.2);
+  --btn-invert-bg: #ffffff;
+  --btn-invert-text: #000000;
+  --tag-active-bg: #ffffff;
+  --tag-active-text: #000000;
+  --gradient-opacity: 0.8;
+  --shadow-color: rgba(0, 0, 0, 0.8);
+  --shadow-light: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] {
+  --bg-color: #ffffff;
+  --bg-color-rgb: 255, 255, 255;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --text-primary: #000000;
+  --text-secondary: #666666;
+  --accent-color: #00aa00;
+  --search-overlay-bg: rgba(255, 255, 255, 0.95);
+  --queue-item-bg: rgba(0, 0, 0, 0.05);
+  --queue-item-hover: rgba(0, 0, 0, 0.1);
+  --progress-track: rgba(0, 0, 0, 0.15);
+  --btn-invert-bg: #000000;
+  --btn-invert-text: #ffffff;
+  --tag-active-bg: #000000;
+  --tag-active-text: #ffffff;
+  --gradient-opacity: 0.6;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-light: rgba(0, 0, 0, 0.05);
 }
 
 body {
@@ -15,32 +50,123 @@ body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   height: 100vh;
   overflow: hidden;
+  transition: background-color 0.6s ease, color 0.4s ease;
 }
 
+/* ===== Animated Background ===== */
 .animated-bg {
   position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 50% 50%, #2a1a3e 0%, #0f0f13 40%, #000000 80%);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: -1;
-  animation: rotateBg 20s linear infinite;
-  animation-play-state: running;
+  pointer-events: none;
+  overflow: hidden;
+  background-color: var(--bg-color);
+  filter: contrast(110%) brightness(105%);
 }
 
-.animated-bg.playing {
-  animation-play-state: running;
+/* Glassmorphism blending layer */
+.bg-glass-overlay {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(80px) saturate(140%);
+  -webkit-backdrop-filter: blur(80px) saturate(140%);
+  z-index: 10;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--bg-color-rgb), 0.1),
+    rgba(var(--bg-color-rgb), 0.3)
+  );
 }
 
-@keyframes rotateBg {
-  0% {
-    transform: rotate(0deg);
-  }
+.bg-blob {
+  position: absolute;
+  width: var(--blob-size, 60vmax);
+  height: var(--blob-size, 60vmax);
+  border-radius: 50%;
+  filter: blur(20px); /* Lower blur on blobs, high blur on overlay for 'glassy' feel */
+  opacity: var(--gradient-opacity);
+  transform: translate(-50%, -50%);
+  transition: background 1.8s ease, width 0.6s ease, height 0.6s ease, opacity 0.6s ease;
+  mix-blend-mode: plus-lighter;
+  z-index: 5;
+}
 
-  100% {
-    transform: rotate(360deg);
-  }
+[data-theme="light"] .bg-blob {
+  mix-blend-mode: darken; /* Darken works better than multiply for visible light gradients */
+  opacity: 0.6;
+  filter: blur(40px);
+}
+
+.blob-1 {
+  top: 20%;
+  left: 20%;
+  background: radial-gradient(circle, var(--color-1, #00ff80) 0%, transparent 75%);
+  animation: drift1 18s ease-in-out infinite alternate;
+}
+
+.blob-2 {
+  top: 80%;
+  left: 80%;
+  background: radial-gradient(circle, var(--color-2, #ff0080) 0%, transparent 75%);
+  animation: drift2 22s ease-in-out infinite alternate;
+}
+
+.blob-3 {
+  top: 30%;
+  left: 80%;
+  background: radial-gradient(circle, var(--color-3, #0080ff) 0%, transparent 75%);
+  animation: drift3 20s ease-in-out infinite alternate;
+}
+
+.blob-4 {
+  top: 70%;
+  left: 10%;
+  background: radial-gradient(circle, var(--color-4, #ff8000) 0%, transparent 75%);
+  animation: drift4 24s ease-in-out infinite alternate;
+}
+
+@keyframes drift1 {
+  0% { top: -10%; left: -10%; }
+  50% { top: 50%; left: 60%; }
+  100% { top: 20%; left: 110%; }
+}
+
+@keyframes drift2 {
+  0% { top: 110%; left: 110%; }
+  50% { top: 40%; left: 30%; }
+  100% { top: 80%; left: -10%; }
+}
+
+@keyframes drift3 {
+  0% { top: -20%; left: 120%; }
+  50% { top: 60%; left: 40%; }
+  100% { top: 100%; left: 90%; }
+}
+
+@keyframes drift4 {
+  0% { top: 120%; left: -20%; }
+  50% { top: 30%; left: 70%; }
+  100% { top: 10%; left: 20%; }
+}
+
+/* Audio-reactive pulse overlay (Centered) */
+.audio-pulse {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 60vmax;
+  height: 60vmax;
+  transform: translate(-50%, -50%) scale(var(--pulse-scale, 1));
+  background: radial-gradient(circle, var(--pulse-color, rgba(255, 255, 255, 0.4)) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 15;
+  opacity: var(--pulse-opacity, 0);
+  transition: opacity 0.1s ease;
+  mix-blend-mode: plus-lighter;
 }
 
 .app-container {
@@ -200,7 +326,7 @@ body {
   opacity: 0;
   transition: opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   z-index: 1;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 15px 30px var(--shadow-color);
 }
 
 .track-item-wrapper:hover .item-art {
@@ -234,9 +360,13 @@ body {
   color: var(--text-primary);
 }
 
+[data-theme="light"] .tag-pill:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
 .tag-pill.active {
-  background: var(--text-primary);
-  color: var(--bg-color);
+  background: var(--tag-active-bg);
+  color: var(--tag-active-text);
 }
 
 .add-tag-btn {
@@ -262,9 +392,9 @@ body {
 .queue-add-btn {
   font-size: 0.8rem;
   padding: 4px 10px;
-  background: var(--text-primary);
-  border: 1px solid var(--text-primary);
-  color: var(--bg-color);
+  background: var(--btn-invert-bg);
+  border: 1px solid var(--btn-invert-bg);
+  color: var(--btn-invert-text);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.2s, transform 0.2s;
@@ -305,7 +435,7 @@ body {
   background-color: var(--glass-border);
   background-size: cover;
   background-position: center;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 20px var(--shadow-light);
 }
 
 .grid-title {
@@ -354,14 +484,14 @@ body {
   align-items: center;
   padding: 15px 20px;
   margin-bottom: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--queue-item-bg);
   border-left: 2px solid transparent;
   cursor: grab;
   transition: background 0.2s;
 }
 
 .queue-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--queue-item-hover);
   border-left-color: var(--text-secondary);
 }
 
@@ -411,8 +541,8 @@ body {
 }
 
 .new-playlist-btn {
-  background: var(--text-primary);
-  color: var(--bg-color);
+  background: var(--btn-invert-bg);
+  color: var(--btn-invert-text);
   border: none;
   padding: 10px 20px;
   font-weight: 600;
@@ -589,7 +719,7 @@ body {
 .progress-bar {
   flex-grow: 1;
   height: 2px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--progress-track);
   cursor: pointer;
   position: relative;
 }
@@ -605,7 +735,7 @@ body {
 .search-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--search-overlay-bg);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
   z-index: 200;
@@ -701,4 +831,39 @@ body {
   font-size: 1rem;
   text-align: center;
   color: var(--text-primary);
+}
+
+/* ===== Theme Toggle Button ===== */
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 150;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s, background 0.3s, border-color 0.3s, transform 0.2s;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.theme-toggle:hover {
+  color: var(--text-primary);
+  transform: scale(1.1);
+  border-color: var(--text-secondary);
+}
+
+.theme-toggle svg {
+  transition: transform 0.5s ease;
+}
+
+.theme-toggle:hover svg {
+  transform: rotate(30deg);
 }

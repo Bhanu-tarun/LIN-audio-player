@@ -1,4 +1,4 @@
-const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef, useCallback } = React;
 
 const Icon = ({ path, size = 24, fill = "none", className, style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="square" strokeLinejoin="miter" className={className} style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}>
@@ -16,6 +16,8 @@ const Volume2 = (p) => <Icon {...p} path={<><polygon points="11 5 6 9 2 9 2 15 6
 const Trash = (p) => <Icon {...p} path={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>} />;
 const ArrowLeft = (p) => <Icon {...p} path={<><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></>} />;
 const Edit3 = (p) => <Icon {...p} path={<><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></>} />;
+const SunIcon = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>} />;
+const MoonIcon = (p) => <Icon {...p} path={<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>} />;
 
 const getImageUrl = (seed) => {
     let hash = 0;
@@ -26,24 +28,143 @@ const getImageUrl = (seed) => {
     return `https://picsum.photos/seed/${Math.abs(hash)}/400/400`;
 };
 
-const getAverageColor = (imgUrl, callback) => {
+const getBrightestColor = (imgUrl, callback) => {
     const img = new Image();
     img.crossOrigin = "Anonymous";
     img.src = imgUrl;
     img.onload = () => {
         const canvas = document.createElement('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
+        const size = 20;
+        canvas.width = size;
+        canvas.height = size;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(img, 0, 0, 1, 1);
+        ctx.drawImage(img, 0, 0, size, size);
         try {
-            const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-            callback(`rgb(${r},${g},${b})`);
+            const data = ctx.getImageData(0, 0, size, size).data;
+            let brightest = { r: 255, g: 255, b: 255, val: -1 };
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                // Use perceived brightness formula
+                const val = (r * 299 + g * 587 + b * 114) / 1000;
+                if (val > brightest.val) {
+                    brightest = { r, g, b, val };
+                }
+            }
+            // If it's too dark (entire image is dark), boost it
+            if (brightest.val < 150) {
+                const boost = 200 / (brightest.val + 1);
+                brightest.r = Math.min(255, brightest.r * boost);
+                brightest.g = Math.min(255, brightest.g * boost);
+                brightest.b = Math.min(255, brightest.b * boost);
+            }
+            callback(`rgb(${Math.round(brightest.r)},${Math.round(brightest.g)},${Math.round(brightest.b)})`);
         } catch(e) {
-            callback('#00ff00');
+            callback('#ffffff');
         }
     };
-    img.onerror = () => callback('#00ff00');
+    img.onerror = () => callback('#ffffff');
+};
+
+const getAverageColor = (imgUrl, callback) => {
+    getBrightestColor(imgUrl, callback);
+};
+
+const rgbToHsl = (r, g, b) => {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) h = s = 0;
+    else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        h /= 6;
+    }
+    return [h, s, l];
+};
+
+const hslToRgb = (h, s, l) => {
+    let r, g, b;
+    if (s === 0) r = g = b = l;
+    else {
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+};
+
+// Extract and enhance multiple colors using HSL for extreme vibrancy
+const getImageColors = (imgUrl, callback) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = imgUrl;
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 15; 
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, size, size);
+        try {
+            const data = ctx.getImageData(0, 0, size, size).data;
+            const uniqueHues = [];
+            
+            for (let i = 0; i < data.length; i += 4 * 2) {
+                const [h, s, l] = rgbToHsl(data[i], data[i+1], data[i+2]);
+                // Filter out very dark or very grey pixels
+                if (l > 0.1 && s > 0.1) {
+                    uniqueHues.push(h);
+                }
+            }
+            
+            // Pick distinct hues
+            const hues = [];
+            uniqueHues.forEach(h => {
+                if (hues.length < 6 && !hues.some(existing => Math.abs(existing - h) < 0.1)) {
+                    hues.push(h);
+                }
+            });
+            
+            // If we don't have enough hues, rotate from the first one
+            if (hues.length === 0) hues.push(0.3); // fallback green
+            while (hues.length < 4) {
+                hues.push((hues[hues.length - 1] + 0.2) % 1);
+            }
+
+            // Map hues to highly saturated, bright RGB colors
+            const palette = hues.map(h => {
+                const [r, g, b] = hslToRgb(h, 0.9, 0.55); // 90% saturation, 55% lightness
+                return { r, g, b };
+            });
+
+            callback({
+                palette: palette.slice(0, 4),
+                accent: `rgb(${palette[0].r},${palette[0].g},${palette[0].b})`
+            });
+        } catch(e) {
+            callback({
+                palette: [{r:0,g:255,b:128}, {r:255,g:0,b:128}, {r:0,g:128,b:255}, {r:255,g:128,b:0}],
+                accent: '#00ff00'
+            });
+        }
+    };
+    img.onerror = () => callback({
+        palette: [{r:0,g:255,b:128}, {r:255,g:0,b:128}, {r:0,g:128,b:255}, {r:255,g:128,b:0}],
+        accent: '#00ff00'
+    });
 };
 
 const formatTime = (time) => {
@@ -107,6 +228,23 @@ const App = () => {
     const isDraggingVol = useRef(false);
     const isDraggingProgress = useRef(false);
 
+    // Theme State
+    const [theme, setTheme] = useState(() => {
+        try { return localStorage.getItem('lin-theme') || 'dark'; } catch(e) { return 'dark'; }
+    });
+
+    // Audio analyser refs
+    const audioContextRef = useRef(null);
+    const analyserRef = useRef(null);
+    const sourceRef = useRef(null);
+    const animFrameRef = useRef(null);
+    const gradientColorsRef = useRef({
+        palette: [
+            { r: 42, g: 26, b: 62 }, { r: 20, g: 50, b: 60 },
+            { r: 60, g: 20, b: 40 }, { r: 20, g: 60, b: 30 }
+        ]
+    });
+
     const audioRef = useRef(new Audio());
     const progressBarRef = useRef(null);
     const volumeBarRef = useRef(null);
@@ -116,6 +254,114 @@ const App = () => {
         fetch('/api/playlists').then(res => res.json()).then(data => setPlaylists(data));
         fetch('/api/albums').then(res => res.json()).then(data => setAlbumMeta(data));
     };
+
+    // Apply theme
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        try { localStorage.setItem('lin-theme', theme); } catch(e) {}
+    }, [theme]);
+
+    const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+
+    // Setup audio analyser for reactive background
+    const setupAnalyser = useCallback(() => {
+        if (analyserRef.current) return; // already setup
+        try {
+            const ctx = audioContextRef.current || new (window.AudioContext || window.webkitAudioContext)();
+            audioContextRef.current = ctx;
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.8;
+            const source = ctx.createMediaElementSource(audioRef.current);
+            source.connect(analyser);
+            analyser.connect(ctx.destination);
+            analyserRef.current = analyser;
+            sourceRef.current = source;
+        } catch(e) {
+            console.warn('Could not setup audio analyser:', e);
+        }
+    }, []);
+
+    // Audio-reactive animation loop
+    const startAudioReactiveLoop = useCallback(() => {
+        if (animFrameRef.current) return;
+        
+        const bgEl = document.querySelector('.animated-bg');
+        const pulseEl = document.querySelector('.audio-pulse');
+        if (!bgEl) return;
+        
+        const dataArray = new Uint8Array(analyserRef.current?.frequencyBinCount || 128);
+        
+        const animate = () => {
+            if (analyserRef.current) {
+                analyserRef.current.getByteFrequencyData(dataArray);
+                
+                // Calculate energy from bass frequencies (first 1/4 of bins)
+                const bassEnd = Math.floor(dataArray.length / 4);
+                let bassEnergy = 0;
+                for (let i = 0; i < bassEnd; i++) bassEnergy += dataArray[i];
+                bassEnergy = bassEnergy / (bassEnd * 255);
+                
+                // Calculate overall energy
+                let totalEnergy = 0;
+                for (let i = 0; i < dataArray.length; i++) totalEnergy += dataArray[i];
+                totalEnergy = totalEnergy / (dataArray.length * 255);
+                
+                const { palette } = gradientColorsRef.current;
+                
+                // Modulate all 4 blobs
+                palette.forEach((col, idx) => {
+                    const energy = (idx % 2 === 0) ? bassEnergy : totalEnergy;
+                    const size = (45 + idx * 5) + energy * 35;
+                    const opacity = (0.6 + (idx % 2) * 0.15) + energy * 0.4;
+                    
+                    bgEl.style.setProperty(`--color-${idx + 1}`, `rgba(${col.r},${col.g},${col.b},${Math.min(1, opacity)})`);
+                    bgEl.style.setProperty(`--blob-size`, `${size}vmax`);
+                });
+                
+                // Pulse overlay
+                if (pulseEl) {
+                    const p = palette[0];
+                    const pulseScale = 1.2 + bassEnergy * 1.5;
+                    pulseEl.style.setProperty('--pulse-scale', pulseScale);
+                    pulseEl.style.setProperty('--pulse-opacity', Math.min(0.7, 0.3 + bassEnergy * 0.7));
+                    pulseEl.style.setProperty('--pulse-color', `rgba(${p.r},${p.g},${p.b},0.4)`);
+                }
+            }
+            animFrameRef.current = requestAnimationFrame(animate);
+        };
+        animate();
+    }, []);
+
+    const stopAudioReactiveLoop = useCallback(() => {
+        if (animFrameRef.current) {
+            cancelAnimationFrame(animFrameRef.current);
+            animFrameRef.current = null;
+        }
+        // Reset to static state
+        const bgEl = document.querySelector('.animated-bg');
+        const pulseEl = document.querySelector('.audio-pulse');
+        if (bgEl) {
+            const { palette } = gradientColorsRef.current;
+            palette.forEach((col, idx) => {
+                bgEl.style.setProperty(`--color-${idx + 1}`, `rgba(${col.r},${col.g},${col.b},${0.4 + (idx % 2) * 0.1})`);
+            });
+            bgEl.style.setProperty('--blob-size', '50vmax');
+        }
+        if (pulseEl) {
+            pulseEl.style.setProperty('--pulse-opacity', '0');
+        }
+    }, []);
+
+    // Start/stop reactive loop based on playback
+    useEffect(() => {
+        if (isPlaying && analyserRef.current) {
+            startAudioReactiveLoop();
+        } else {
+            stopAudioReactiveLoop();
+        }
+        return () => stopAudioReactiveLoop();
+    }, [isPlaying, startAudioReactiveLoop, stopAudioReactiveLoop]);
 
     useEffect(() => {
         fetchData();
@@ -135,13 +381,32 @@ const App = () => {
         };
     }, []);
 
+    // Update gradient colors from album art
     useEffect(() => {
         if (currentTrack) {
-            getAverageColor(getImageUrl(currentTrack.album || currentTrack.title), color => {
+            const imgUrl = albumMeta[currentTrack.album]?.image 
+                ? `/api/images/${encodeURI(albumMeta[currentTrack.album].image)}`
+                : getImageUrl(currentTrack.album || currentTrack.title);
+            
+            // Get accent color for track highlighting
+            getAverageColor(imgUrl, color => {
                 setCurrentColor(color);
             });
+            
+            // Get multi-color palette for gradient background
+            getImageColors(imgUrl, colors => {
+                gradientColorsRef.current = colors;
+                
+                // Apply gradient colors to CSS custom properties
+                const bgEl = document.querySelector('.animated-bg');
+                if (bgEl) {
+                    colors.palette.forEach((col, idx) => {
+                        bgEl.style.setProperty(`--color-${idx + 1}`, `rgba(${col.r},${col.g},${col.b},${0.4 + (idx % 2) * 0.1})`);
+                    });
+                }
+            });
         }
-    }, [currentTrack]);
+    }, [currentTrack, albumMeta]);
 
     useEffect(() => {
         if (audioRef.current) {
@@ -250,15 +515,22 @@ const App = () => {
     };
 
     const playContext = (trackList, startIndex) => {
+        setupAnalyser();
         setCurrentTrack(trackList[startIndex]);
         setQueue(trackList.slice(startIndex + 1));
         audioRef.current.src = '/api/stream/' + encodeURIComponent(trackList[startIndex].filename);
-        audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.error(e));
+        audioRef.current.play().then(() => {
+            setIsPlaying(true);
+            if (audioContextRef.current?.state === 'suspended') {
+                audioContextRef.current.resume();
+            }
+        }).catch(e => console.error(e));
         setIsSearching(false);
     };
 
     const playNext = () => {
         if (queue.length > 0) {
+            setupAnalyser();
             const next = queue[0];
             setCurrentTrack(next);
             setQueue(queue.slice(1));
@@ -881,7 +1153,19 @@ const App = () => {
 
     return (
         <div className="app-container">
-            <div className={`animated-bg ${isPlaying ? 'playing' : ''}`} />
+            <div className="animated-bg">
+                <div className="bg-blob blob-1"></div>
+                <div className="bg-blob blob-2"></div>
+                <div className="bg-blob blob-3"></div>
+                <div className="bg-blob blob-4"></div>
+                <div className="bg-glass-overlay"></div>
+            </div>
+            <div className="audio-pulse" />
+
+            {/* Theme Toggle */}
+            <button className="theme-toggle" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+                {theme === 'dark' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+            </button>
 
             {columns.map(id => (
                 <div 
