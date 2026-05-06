@@ -18,3 +18,17 @@ it has a few features, like:
 - automatic metadata handling. 
 
 i also need to clean up my mess of a repo, I shall do that as soon as im ready to work on production ready-ing it. 
+
+installation:- 
+ -- make sure that you have python 3.8 installed.
+ -- put your audio files, flac, wav or mp3 into the audio files folder
+ -- run the setup script 
+ -- ```bash
+    chmod +x run.sh
+    ./run.sh
+    ```
+  -- once the server starts, visit localhost:8000 on your browser. 
+
+  or you can use this repo to integrate into your own server environment. 
+
+i did look into spotify integration, but it kinda goes against the whole decentralising from major services idea. if there is demand for it, i wouldnt be unwilling to implement the same. 
