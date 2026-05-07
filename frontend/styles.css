@@ -67,18 +67,19 @@ body {
   filter: contrast(110%) brightness(105%);
 }
 
-/* Glassmorphism blending layer */
+/* Glassmorphism blending layer - Optimized */
 .bg-glass-overlay {
   position: absolute;
   inset: 0;
-  backdrop-filter: blur(80px) saturate(140%);
-  -webkit-backdrop-filter: blur(80px) saturate(140%);
+  backdrop-filter: blur(40px) saturate(120%); /* Reduced blur for performance */
+  -webkit-backdrop-filter: blur(40px) saturate(120%);
   z-index: 10;
   background: linear-gradient(
     to bottom,
-    rgba(var(--bg-color-rgb), 0.1),
-    rgba(var(--bg-color-rgb), 0.3)
+    rgba(var(--bg-color-rgb), 0.05),
+    rgba(var(--bg-color-rgb), 0.2)
   );
+  pointer-events: none;
 }
 
 .bg-blob {
@@ -86,12 +87,13 @@ body {
   width: var(--blob-size, 60vmax);
   height: var(--blob-size, 60vmax);
   border-radius: 50%;
-  filter: blur(20px); /* Lower blur on blobs, high blur on overlay for 'glassy' feel */
+  filter: blur(35px); /* Increased blur here to compensate for lower overlay blur */
   opacity: var(--gradient-opacity);
-  transform: translate(-50%, -50%);
-  transition: background 1.8s ease, width 0.6s ease, height 0.6s ease, opacity 0.6s ease;
+  transform: translate(calc(-50% + var(--offset-x, 0px)), calc(-50% + var(--offset-y, 0px)));
+  transition: background 1.8s ease, width 0.1s ease-out, height 0.1s ease-out, opacity 0.1s ease-out;
   mix-blend-mode: plus-lighter;
   z-index: 5;
+  will-change: transform, opacity, width, height; /* Hardware acceleration */
 }
 
 [data-theme="light"] .bg-blob {
@@ -103,6 +105,8 @@ body {
 .blob-1 {
   top: 20%;
   left: 20%;
+  --offset-x: var(--offset-x-1, 0px);
+  --offset-y: var(--offset-y-1, 0px);
   background: radial-gradient(circle, var(--color-1, #00ff80) 0%, transparent 75%);
   animation: drift1 18s ease-in-out infinite alternate;
 }
@@ -110,6 +114,8 @@ body {
 .blob-2 {
   top: 80%;
   left: 80%;
+  --offset-x: var(--offset-x-2, 0px);
+  --offset-y: var(--offset-y-2, 0px);
   background: radial-gradient(circle, var(--color-2, #ff0080) 0%, transparent 75%);
   animation: drift2 22s ease-in-out infinite alternate;
 }
@@ -117,6 +123,8 @@ body {
 .blob-3 {
   top: 30%;
   left: 80%;
+  --offset-x: var(--offset-x-3, 0px);
+  --offset-y: var(--offset-y-3, 0px);
   background: radial-gradient(circle, var(--color-3, #0080ff) 0%, transparent 75%);
   animation: drift3 20s ease-in-out infinite alternate;
 }
@@ -124,6 +132,8 @@ body {
 .blob-4 {
   top: 70%;
   left: 10%;
+  --offset-x: var(--offset-x-4, 0px);
+  --offset-y: var(--offset-y-4, 0px);
   background: radial-gradient(circle, var(--color-4, #ff8000) 0%, transparent 75%);
   animation: drift4 24s ease-in-out infinite alternate;
 }
@@ -161,12 +171,13 @@ body {
   height: 60vmax;
   transform: translate(-50%, -50%) scale(var(--pulse-scale, 1));
   background: radial-gradient(circle, var(--pulse-color, rgba(255, 255, 255, 0.4)) 0%, transparent 70%);
-  filter: blur(80px);
+  filter: blur(60px); /* Reduced blur */
   pointer-events: none;
   z-index: 15;
   opacity: var(--pulse-opacity, 0);
-  transition: opacity 0.1s ease;
+  transition: opacity 0.05s ease-out;
   mix-blend-mode: plus-lighter;
+  will-change: transform, opacity;
 }
 
 .app-container {

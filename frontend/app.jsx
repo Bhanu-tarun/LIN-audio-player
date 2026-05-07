@@ -238,6 +238,8 @@ const App = () => {
     const analyserRef = useRef(null);
     const sourceRef = useRef(null);
     const animFrameRef = useRef(null);
+    const lastTotalEnergy = useRef(0);
+    const lastBassEnergy = useRef(0);
     const gradientColorsRef = useRef({
         palette: [
             { r: 42, g: 26, b: 62 }, { r: 20, g: 50, b: 60 },
@@ -307,25 +309,48 @@ const App = () => {
                 for (let i = 0; i < dataArray.length; i++) totalEnergy += dataArray[i];
                 totalEnergy = totalEnergy / (dataArray.length * 255);
                 
+                // Boost sensitivity
+                const sensitivity = 1.5;
+                const boostedBass = Math.min(1, bassEnergy * sensitivity);
+                const boostedTotal = Math.min(1, totalEnergy * sensitivity);
+                
+                // PERFORMANCE OPTIMIZATION: Only update DOM if change is significant
+                const delta = 0.005;
+                if (Math.abs(lastTotalEnergy.current - boostedTotal) < delta && 
+                    Math.abs(lastBassEnergy.current - boostedBass) < delta) {
+                    animFrameRef.current = requestAnimationFrame(animate);
+                    return;
+                }
+                lastTotalEnergy.current = boostedTotal;
+                lastBassEnergy.current = boostedBass;
+                
                 const { palette } = gradientColorsRef.current;
                 
-                // Modulate all 4 blobs
+                // Modulate all 4 blobs with more sensitivity and quicker decay
                 palette.forEach((col, idx) => {
-                    const energy = (idx % 2 === 0) ? bassEnergy : totalEnergy;
-                    const size = (45 + idx * 5) + energy * 35;
-                    const opacity = (0.6 + (idx % 2) * 0.15) + energy * 0.4;
+                    const energy = (idx % 2 === 0) ? boostedBass : boostedTotal;
+                    
+                    // Snappy scaling and opacity
+                    const size = (45 + idx * 5) + energy * 60; 
+                    const opacity = (0.6 + (idx % 2) * 0.1) + energy * 0.5;
+                    
+                    // Positional "jitter" with snappy decay
+                    const offsetX = (Math.sin(Date.now() / 800 + idx) * energy * 20);
+                    const offsetY = (Math.cos(Date.now() / 800 + idx) * energy * 20);
                     
                     bgEl.style.setProperty(`--color-${idx + 1}`, `rgba(${col.r},${col.g},${col.b},${Math.min(1, opacity)})`);
                     bgEl.style.setProperty(`--blob-size`, `${size}vmax`);
+                    bgEl.style.setProperty(`--offset-x-${idx+1}`, `${offsetX}px`);
+                    bgEl.style.setProperty(`--offset-y-${idx+1}`, `${offsetY}px`);
                 });
                 
-                // Pulse overlay
+                // Pulse overlay - even more dramatic and snappy
                 if (pulseEl) {
                     const p = palette[0];
-                    const pulseScale = 1.2 + bassEnergy * 1.5;
+                    const pulseScale = 1.3 + boostedBass * 2.5;
                     pulseEl.style.setProperty('--pulse-scale', pulseScale);
-                    pulseEl.style.setProperty('--pulse-opacity', Math.min(0.7, 0.3 + bassEnergy * 0.7));
-                    pulseEl.style.setProperty('--pulse-color', `rgba(${p.r},${p.g},${p.b},0.4)`);
+                    pulseEl.style.setProperty('--pulse-opacity', Math.min(0.9, 0.2 + boostedBass * 0.9));
+                    pulseEl.style.setProperty('--pulse-color', `rgba(${p.r},${p.g},${p.b},0.5)`);
                 }
             }
             animFrameRef.current = requestAnimationFrame(animate);
