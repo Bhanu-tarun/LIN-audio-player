@@ -15,6 +15,10 @@ it has a few features, like:
 - playlisting
 - queueing songs    
 - (planning on adding a background that reacts to how the music sounds, gonna take me a little to figure it out)
+
+__ADDED REACTIVE GRADIENT BACKGROUND___
+
+It looks super cool check it out, pull from the repo again (5/7/2026)
 - automatic metadata handling. 
 
 i also need to clean up my mess of a repo, I shall do that as soon as im ready to work on production ready-ing it. 
